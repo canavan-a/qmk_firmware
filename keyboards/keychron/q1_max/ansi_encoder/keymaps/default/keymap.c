@@ -84,19 +84,41 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
-    static bool alt_held = false;
+    static bool alt_held         = false;
+    static bool space_held       = false;
+    static bool num_layer_active = false;
 
+    // Track Alt key state
     if (keycode == KC_LALT || keycode == KC_RALT) {
         alt_held = record->event.pressed;
+        uprintf("Alt %s (alt_held=%d)\n", record->event.pressed ? "pressed" : "released", alt_held);
+
+        // If Alt is released and num layer is active, deactivate it
+        if (!alt_held && num_layer_active) {
+            layer_off(NUM_LAYER);
+            num_layer_active = false;
+            uprintf("Layer OFF (Alt released)\n");
+        }
     }
 
-    if (keycode == KC_SPC && alt_held && record->event.pressed) {
-        layer_on(NUM_LAYER);
-        return false;
-    }
+    // Track Space key state
+    if (keycode == KC_SPC) {
+        space_held = record->event.pressed;
+        uprintf("Space %s (space_held=%d, alt_held=%d)\n", record->event.pressed ? "pressed" : "released", space_held, alt_held);
 
-    if (keycode == KC_SPC && !record->event.pressed) {
-        layer_off(NUM_LAYER);
+        // Activate layer when Space is pressed while Alt is held
+        if (space_held && alt_held) {
+            layer_on(NUM_LAYER);
+            num_layer_active = true;
+            uprintf("Layer ON (Alt+Space)\n");
+        }
+
+        // Deactivate layer when Space is released
+        if (!space_held && num_layer_active) {
+            layer_off(NUM_LAYER);
+            num_layer_active = false;
+            uprintf("Layer OFF (Space released)\n");
+        }
     }
 
     return true;
